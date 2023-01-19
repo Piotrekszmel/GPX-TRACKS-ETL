@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="fabulator:gpx-builder" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3">
+  <trk>
+    <trkseg>
+      <trkpt lat="50.707670419567464" lon="-1.9691392585299703">
+        <time>2022-04-02T14:03:08.131Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:speed>1.920390009880066</gpxtpx:speed>
+            <gpxtpx:course>27.523739656900055</gpxtpx:course>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+      </trkpt>
+      <trkpt lat="50.707708935468894" lon="-1.9690110751180676">
+        <time>2022-04-02T14:03:13.130Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:speed>1.9162558317184448</gpxtpx:speed>
+            <gpxtpx:course>28.235566604273153</gpxtpx:course>
+          </gpxtpx:TrackPointExtension>
+        </extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <metadata>
+    <copyright author="savvy navvy">
+      <year>2022</year>
+    </copyright>
+    <link href="https://www.savvy-navvy.com/">
+      <text>savvy navvy</text>
+    </link>
+    <time>2022-05-31T10:33:47.540Z</time>
+    <bounds minlat="50.707670419567464" minlon="50.707708935468894" maxlat="50.707708935468894" maxlon="-1.9690110751180676"></bounds>
+  </metadata>
+</gpx>
