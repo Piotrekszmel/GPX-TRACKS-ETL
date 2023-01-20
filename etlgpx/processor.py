@@ -4,12 +4,23 @@ import psycopg2
 import os
 import gpxpy 
 from gpxpy.gpx import GPXTrack
+from psycopg2.extensions import connection
 from typing import List, Dict
 from dotenv import load_dotenv
 
 
 class Processor:
-    def __init__(self, data_path: str = None) -> List[GPXTrack]:
+    def __init__(self, data_path: str = None) -> None:
+        """
+        Initializes Processor class.
+
+        Args:
+            data_path: Path to location with gpx files that will be then
+            extracted while running extract() method.
+
+        Returns:
+            None 
+        """
         self.data_path = data_path
         self.data = None
         self.transformed_data = None
@@ -21,7 +32,18 @@ class Processor:
                                   'speed FLOAT,' + \
                                   'course FLOAT);'
 
-    def extract(self, data_path: str = None):
+    def extract(self, data_path: str = None) -> List[GPXTrack]:
+        """
+        Extracts data from gpx files from given location. 
+        If location is not provided, then data_path specified
+        during Processor initialization will be used. 
+
+        Args:
+            data_path: Path to location with gpx files 
+            that will extracted. 
+        Returns:
+            List of GPXTracks.
+        """
         if data_path:
             self.data_path = data_path
         
@@ -34,6 +56,17 @@ class Processor:
         return self.data
 
     def transform(self, data: List[GPXTrack]=None) -> pd.DataFrame:
+        """
+        Transforms data from gpx format into pandas Dataframe. 
+        If data is not provided, then data from extract()
+        will be used.
+
+        Args:
+            data: List of GPXTracks that will be 
+            transformed into pandas Dataframe.
+        Returns:
+            Pandas DataFrame with transformed data. 
+        """
         points = []
         if data:
             self.data = data
@@ -62,7 +95,18 @@ class Processor:
 
     def load(self,
              data: pd.DataFrame=None,
-             create_table_query: str=None):
+             create_table_query: str=None) -> None:
+        """
+        Loads data into redshift table based 
+        on specified configuration. 
+        If data is not provided, then data created from transform()
+        method will be used.
+
+        Args:
+            data: pandas Dataframe.
+        Returns:
+            None 
+        """
         if data is not None:
             if isinstance(data, pd.DataFrame):
                 self.transformed_data = data
@@ -88,7 +132,7 @@ class Processor:
             print("TABLE CREATED IF NOT EXISTED")
             self.transformed_data.to_sql(os.getenv('REDSHIFT_TABLE'),
                                          df_conn,
-                                         if_exists='replace',
+                                         if_exists='append',
                                          index=False)
             print("DATA SAVED ON REDSHIFT CLUSTER")
             cur.close()
@@ -99,7 +143,16 @@ class Processor:
             print(e)
 
     def _create_table_if_not_exists(self,
-                                    conn) -> None:
+                                    conn: connection) -> None:
+        """
+        Creates table with configuration given in conn parameter
+        if that table does not exist.
+
+        Args:
+            data: pandas Dataframe.
+        Returns:
+            None 
+        """
         try:
             cur = conn.cursor()
             cur.execute(self.create_table_query)
@@ -115,6 +168,6 @@ class Processor:
 
 if __name__ == '__main__':
     p = Processor()
-    p.extract('/home/pito/gpx-tracks-etl/data/3a6579b2934311edbd18139731566f23.gpx')
-    p.transform()
-    p.load()
+    p.extract('/home/pito/gpx-tracks-etl/data/dummy.gpx')
+    print(p.transform())
+    # p.load()
