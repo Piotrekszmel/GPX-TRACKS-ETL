@@ -1,0 +1,5 @@
+pandas
+gpxpy
+psycopg2
+sqlalchemy
+python-dotenv
