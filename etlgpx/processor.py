@@ -16,7 +16,7 @@ class Processor:
 
         Args:
             data_path: Path to location with gpx files that will be then
-            extracted while running extract() method.
+                       extracted while running extract() method.
 
         Returns:
             None 
@@ -40,7 +40,7 @@ class Processor:
 
         Args:
             data_path: Path to location with gpx files 
-            that will extracted. 
+                       that will extracted. 
         Returns:
             List of GPXTracks.
         """
@@ -48,7 +48,7 @@ class Processor:
             self.data_path = data_path
         
         if self.data_path is None:
-            raise ValueError('Data path is not set up')
+            raise ValueError('Data path is not set up.')
 
         with open(self.data_path, 'r') as gpx_file:  
             gpx = gpxpy.parse(gpx_file, version='1.1')
@@ -63,14 +63,16 @@ class Processor:
 
         Args:
             data: List of GPXTracks that will be 
-            transformed into pandas Dataframe.
+                  transformed into pandas Dataframe.
         Returns:
             Pandas DataFrame with transformed data. 
         """
         points = []
-        if data:
+        if data is not None:
             self.data = data
-        
+        if self.data is None:
+            raise ValueError('Data was not provided.')
+
         for track in self.data:
             for segment in track.segments:
                 for p in segment.points:
@@ -103,7 +105,8 @@ class Processor:
         method will be used.
 
         Args:
-            data: pandas Dataframe.
+            data: Pandas Dataframe.
+            create_table_query: Query that will be used to create table.
         Returns:
             None 
         """
@@ -112,6 +115,8 @@ class Processor:
                 self.transformed_data = data
             else:
                 raise ValueError('Data need to be provided as pandas DataFrame')
+        if self.transformed_data is None:
+            raise ValueError('Transformed data was not provided.')
         load_dotenv()
         config = {
             'dbname': os.getenv('REDSHIFT_DB_NAME'),
@@ -141,6 +146,25 @@ class Processor:
 
         except psycopg2.Error as e:
             print(e)
+    
+    def run_pipeline(self,
+                     data_path: str=None, 
+                     create_table_query: str=None) -> None:
+        """
+        Sequentially invokes extract(), transform()
+        and load() methods.
+
+        Args:
+            data_path: Path to location with gpx files 
+                       that will extracted.
+            create_table_query: Query that will be used to create table.
+        Returns:
+            None 
+        """
+        self.extract(data_path)
+        self.transform()
+        self.load(create_table_query=create_table_query)
+        print("Pipeline executed successfully!")        
 
     def _create_table_if_not_exists(self,
                                     conn: connection) -> None:
@@ -177,6 +201,4 @@ class Processor:
 
 if __name__ == '__main__':
     p = Processor()
-    p.extract('/home/pito/gpx-tracks-etl/data/dummy.gpx')
-    print(p.transform())
-    # p.load()
+    p.run_pipeline(data_path='/home/pito/gpx-tracks-etl/data/dummy.gpx')
