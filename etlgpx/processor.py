@@ -162,6 +162,15 @@ class Processor:
             print(e)
     
     def _prepare_conn_string(self, config: Dict[str, int]) -> str:
+        """
+        Creates connection string based ongiven configuraion.
+
+        Args:
+            config: Dict containing key/value pairs that will 
+            be used as a connection parameters.
+        Returns:
+            Connection string. 
+        """
         return f'postgresql://{config["user"]}:{config["password"]}' + \
                f'@{config["host"]}:{config["port"]}/{config["dbname"]}'
 
