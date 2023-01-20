@@ -70,7 +70,7 @@ class Processor:
         points = []
         if data is not None:
             self.data = data
-        if self.data is None:
+        elif self.data is None: 
             raise ValueError('Data was not provided.')
 
         for track in self.data:
