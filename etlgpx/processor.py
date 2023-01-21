@@ -24,13 +24,7 @@ class Processor:
         self.data_path = data_path
         self.data = None
         self.transformed_data = None
-        self.create_table_query = 'CREATE TABLE IF NOT EXISTS gpx_tracks (' + \
-                                  'id INT PRIMARY KEY IDENTITY(1, 1),' + \
-                                  'time DATETIME,' + \
-                                  'latitude FLOAT,' + \
-                                  'longitude FLOAT,' + \
-                                  'speed FLOAT,' + \
-                                  'course FLOAT);'
+        self.create_table_query = "/home/pito/gpx-tracks-etl/scripts/create_table.sql"
 
     def extract(self, data_path: str = None) -> List[GPXTrack]:
         """
@@ -106,7 +100,8 @@ class Processor:
 
         Args:
             data: Pandas Dataframe.
-            create_table_query: Query that will be used to create table.
+            create_table_query: Path to sql file that will 
+                                be used to create table.
         Returns:
             None 
         """
@@ -114,7 +109,7 @@ class Processor:
             if isinstance(data, pd.DataFrame):
                 self.transformed_data = data
             else:
-                raise ValueError('Data need to be provided as pandas DataFrame')
+                raise ValueError('Data needs to be provided as pandas DataFrame')
         if self.transformed_data is None:
             raise ValueError('Transformed data was not provided.')
         load_dotenv()
@@ -128,22 +123,19 @@ class Processor:
 
         try:
             db = create_engine(self._prepare_conn_string(config))
-            df_conn = db.connect()
-            conn = psycopg2.connect(**config)
-            cur = conn.cursor()
-            if create_table_query:
-                self.create_table_query = create_table_query
-            self._create_table_if_not_exists(conn)
-            print("TABLE CREATED IF NOT EXISTED")
-            self.transformed_data.to_sql(os.getenv('REDSHIFT_TABLE'),
-                                         df_conn,
-                                         if_exists='append',
-                                         index=False)
-            print("DATA SAVED ON REDSHIFT CLUSTER")
-            cur.close()
-            conn.close() 
-            df_conn.close()
-
+            
+            with psycopg2.connect(**config) as conn:
+                if create_table_query:
+                    self.create_table_query = create_table_query
+                self._create_table_if_not_exists(conn)
+                print("TABLE CREATED IF NOT EXISTED.")
+            
+            with db.connect() as conn:
+                self.transformed_data.to_sql(os.getenv('REDSHIFT_TABLE'),
+                                             conn,
+                                             if_exists='append',
+                                             index=False)
+                print("DATA SAVED ON REDSHIFT CLUSTER.")
         except psycopg2.Error as e:
             print(e)
     
@@ -164,7 +156,7 @@ class Processor:
         self.extract(data_path)
         self.transform()
         self.load(create_table_query=create_table_query)
-        print("Pipeline executed successfully!")        
+        print("PIPELINE EXECUTED SUCCESSFULLY!")        
 
     def _create_table_if_not_exists(self,
                                     conn: connection) -> None:
@@ -178,10 +170,9 @@ class Processor:
             None 
         """
         try:
-            cur = conn.cursor()
-            cur.execute(self.create_table_query)
-            conn.commit()
-            cur.close()
+            with conn.cursor() as cur:
+                cur.execute(open(self.create_table_query, "r").read())
+                conn.commit()
         except psycopg2.Error as e:
             print(e)
     
