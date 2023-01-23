@@ -6,7 +6,6 @@ import gpxpy
 from gpxpy.gpx import GPXTrack
 from psycopg2.extensions import connection
 from typing import List, Dict
-from dotenv import load_dotenv
 
 
 class Processor:
@@ -21,7 +20,6 @@ class Processor:
         Returns:
             None 
         """
-        load_dotenv()
         self.data_path = data_path
         self.data = None
         self.transformed_data = None
@@ -176,8 +174,7 @@ class Processor:
                 query_file: str,
                 commit: bool=False) -> None:
         """
-        Creates table with configuration given in conn parameter
-        if that table does not exist.
+        Execute query provided in given sql file.
 
         Args:
             conn: Psycopg2 connection.
