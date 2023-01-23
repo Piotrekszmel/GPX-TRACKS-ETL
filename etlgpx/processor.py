@@ -21,10 +21,18 @@ class Processor:
         Returns:
             None 
         """
+        load_dotenv()
         self.data_path = data_path
         self.data = None
         self.transformed_data = None
-        self.create_table_query = "/home/pito/gpx-tracks-etl/scripts/create_table.sql"
+        self.create_table_query = os.getenv("CREATE_TABLE", None)
+        self._config = {
+            'dbname': os.getenv('REDSHIFT_DB_NAME'),
+            'host': os.getenv('REDSHIFT_HOST'),
+            'port': int(os.getenv('REDSHIFT_PORT')),
+            'user': os.getenv('REDSHIFT_USER'),
+            'password': os.getenv('REDSHIFT_PASSWORD'),
+        }
 
     def extract(self, data_path: str = None) -> List[GPXTrack]:
         """
@@ -112,24 +120,16 @@ class Processor:
                 raise ValueError('Data needs to be provided as pandas DataFrame')
         if self.transformed_data is None:
             raise ValueError('Transformed data was not provided.')
-        load_dotenv()
-        config = {
-            'dbname': os.getenv('REDSHIFT_DB_NAME'),
-            'host': os.getenv('REDSHIFT_HOST'),
-            'port': int(os.getenv('REDSHIFT_PORT')),
-            'user': os.getenv('REDSHIFT_USER'),
-            'password': os.getenv('REDSHIFT_PASSWORD'),
-        }
-
+        
         try:
-            db = create_engine(self._prepare_conn_string(config))
-            
-            with psycopg2.connect(**config) as conn:
+            with psycopg2.connect(**self._config) as conn:
                 if create_table_query:
                     self.create_table_query = create_table_query
-                self._create_table_if_not_exists(conn)
-                print("TABLE CREATED IF NOT EXISTED.")
+                if self.create_table_query is not None:
+                    self.execute(conn, self.create_table_query, True)
+                    print("TABLE CREATED IF NOT EXISTED.")
             
+            db = create_engine(self._prepare_conn_string(self._config))
             with db.connect() as conn:
                 self.transformed_data.to_sql(os.getenv('REDSHIFT_TABLE'),
                                              conn,
@@ -158,14 +158,13 @@ class Processor:
         self.load(create_table_query=create_table_query)
         print("PIPELINE EXECUTED SUCCESSFULLY!")        
 
-    def _create_table_if_not_exists(self,
-                                    conn: connection) -> None:
+    def _create_table_if_not_exists(self, conn: connection) -> None:
         """
         Creates table with configuration given in conn parameter
         if that table does not exist.
 
         Args:
-            data: pandas Dataframe.
+            conn: psycopg2 connection.
         Returns:
             None 
         """
@@ -189,6 +188,29 @@ class Processor:
         return f'postgresql://{config["user"]}:{config["password"]}' + \
                f'@{config["host"]}:{config["port"]}/{config["dbname"]}'
 
+    def execute(self,
+                conn: connection,
+                query_file: str,
+                commit: bool=False) -> None:
+        """
+        Creates table with configuration given in conn parameter
+        if that table does not exist.
+
+        Args:
+            conn: Psycopg2 connection.
+            query_file: Path to file containing query.
+            commit: If True, the conn.commit() method will be
+                    called after the query is executed. 
+        Returns:
+            None 
+        """
+        try:
+            with conn.cursor() as cur:
+                cur.execute(open(query_file, "r").read())
+                if commit:
+                    conn.commit()
+        except psycopg2.Error as e:
+            print(e)
 
 if __name__ == '__main__':
     p = Processor()
