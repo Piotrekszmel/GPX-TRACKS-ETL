@@ -158,23 +158,6 @@ class Processor:
         self.load(create_table_query=create_table_query)
         print("PIPELINE EXECUTED SUCCESSFULLY!")        
 
-    def _create_table_if_not_exists(self, conn: connection) -> None:
-        """
-        Creates table with configuration given in conn parameter
-        if that table does not exist.
-
-        Args:
-            conn: psycopg2 connection.
-        Returns:
-            None 
-        """
-        try:
-            with conn.cursor() as cur:
-                cur.execute(open(self.create_table_query, "r").read())
-                conn.commit()
-        except psycopg2.Error as e:
-            print(e)
-    
     def _prepare_conn_string(self, config: Dict[str, int]) -> str:
         """
         Creates connection string based ongiven configuraion.
