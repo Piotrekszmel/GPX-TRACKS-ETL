@@ -8,6 +8,7 @@ from gpxpy.gpx import GPXTrack
 from psycopg2.extensions import connection
 from typing import List, Dict
 from scipy import stats
+from global_land_mask import globe
 
 
 class Processor:
@@ -94,17 +95,18 @@ class Processor:
                             speed = float(c.text)
                         elif 'course' in c.tag:
                             course = float(c.text)
-
-                    points.append({
-                        'time': p.time,
-                        'latitude': p.latitude,
-                        'longitude': p.longitude,
-                        'speed': speed,
-                        'course': course
-                    })
+                    if globe.is_ocean(p.latitude, p.longitude):
+                        points.append({
+                            'time': p.time,
+                            'latitude': p.latitude,
+                            'longitude': p.longitude,
+                            'speed': speed,
+                            'course': course
+                        })
         
         self.transformed_data = pd.DataFrame(points)
         self._remove_anomalies()
+
         return self.transformed_data
 
     def load(self,
@@ -200,7 +202,7 @@ class Processor:
         outliers = np.concatenate((outliers_lat, outliers_lon))
         self.transformed_data.drop(outliers,
                                    inplace=True)
-
+    
     def _prepare_conn_string(self, config: Dict[str, int]) -> str:
         """
         Creates connection string based ongiven configuraion.
