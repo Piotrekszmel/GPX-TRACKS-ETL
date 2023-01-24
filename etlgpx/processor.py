@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 import psycopg2
@@ -6,6 +7,7 @@ import gpxpy
 from gpxpy.gpx import GPXTrack
 from psycopg2.extensions import connection
 from typing import List, Dict
+from scipy import stats
 
 
 class Processor:
@@ -21,8 +23,8 @@ class Processor:
             None 
         """
         self.data_path = data_path
-        self.data = None
-        self.transformed_data = None
+        self.data = []
+        self.transformed_data = pd.DataFrame()
         self.create_table_query = os.getenv("CREATE_TABLE", None)
         self._config = {
             'dbname': os.getenv('REDSHIFT_DB_NAME'),
@@ -50,9 +52,18 @@ class Processor:
         if self.data_path is None:
             raise ValueError('Data path is not set up.')
 
-        with open(self.data_path, 'r') as gpx_file:  
-            gpx = gpxpy.parse(gpx_file, version='1.1')
-            self.data = gpx.tracks
+        if self.data_path.endswith('.gpx'):
+            with open(self.data_path, 'r') as gpx_file:     
+                gpx = gpxpy.parse(gpx_file, version='1.1')
+                self.data = gpx.tracks
+        else:
+            self.data = []
+            files = [file for file in os.listdir(self.data_path) 
+                     if os.path.isfile(os.path.join(self.data_path, file))]
+            for file in files:
+                with open(self.data_path + '/' + file, 'r') as gpx_file:
+                    gpx = gpxpy.parse(gpx_file, version='1.1')
+                    self.data += gpx.tracks
         return self.data
 
     def transform(self, data: List[GPXTrack]=None) -> pd.DataFrame:
@@ -70,7 +81,7 @@ class Processor:
         points = []
         if data is not None:
             self.data = data
-        elif self.data is None: 
+        elif not self.data: 
             raise ValueError('Data was not provided.')
 
         for track in self.data:
@@ -93,6 +104,7 @@ class Processor:
                     })
         
         self.transformed_data = pd.DataFrame(points)
+        self._remove_anomalies()
         return self.transformed_data
 
     def load(self,
@@ -116,7 +128,7 @@ class Processor:
                 self.transformed_data = data
             else:
                 raise ValueError('Data needs to be provided as pandas DataFrame')
-        if self.transformed_data is None:
+        if self.transformed_data.empty:
             raise ValueError('Transformed data was not provided.')
         
         try:
@@ -156,19 +168,6 @@ class Processor:
         self.load(create_table_query=create_table_query)
         print("PIPELINE EXECUTED SUCCESSFULLY!")        
 
-    def _prepare_conn_string(self, config: Dict[str, int]) -> str:
-        """
-        Creates connection string based ongiven configuraion.
-
-        Args:
-            config: Dict containing key/value pairs that will 
-            be used as a connection parameters.
-        Returns:
-            Connection string. 
-        """
-        return f'postgresql://{config["user"]}:{config["password"]}' + \
-               f'@{config["host"]}:{config["port"]}/{config["dbname"]}'
-
     def execute(self,
                 conn: connection,
                 query_file: str,
@@ -191,6 +190,30 @@ class Processor:
                     conn.commit()
         except psycopg2.Error as e:
             print(e)
+    
+    def _remove_anomalies(self, threshold: int=3):
+        lat_zscore = np.abs(stats.zscore(self.transformed_data['latitude']))
+        lon_zscore = np.abs(stats.zscore(self.transformed_data['longitude']))
+        
+        outliers_lat = np.where(lat_zscore > threshold)[0]
+        outliers_lon = np.where(lon_zscore > threshold)[0]
+        outliers = np.concatenate((outliers_lat, outliers_lon))
+        self.transformed_data.drop(outliers,
+                                   inplace=True)
+
+    def _prepare_conn_string(self, config: Dict[str, int]) -> str:
+        """
+        Creates connection string based ongiven configuraion.
+
+        Args:
+            config: Dict containing key/value pairs that will 
+            be used as a connection parameters.
+        Returns:
+            Connection string. 
+        """
+        return f'postgresql://{config["user"]}:{config["password"]}' + \
+               f'@{config["host"]}:{config["port"]}/{config["dbname"]}'
+
 
 if __name__ == '__main__':
     p = Processor()
