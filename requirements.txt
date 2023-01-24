@@ -3,3 +3,5 @@ gpxpy
 psycopg2
 sqlalchemy
 python-dotenv
+scipy
+numpy
