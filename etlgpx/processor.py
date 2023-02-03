@@ -11,6 +11,7 @@ from typing import List, Dict
 from scipy import stats
 from global_land_mask import globe
 from geopy.geocoders import Nominatim
+from typing import Tuple
 
 
 class Processor:
@@ -111,9 +112,9 @@ class Processor:
             origin_city, dest_city = 'Unknown', 'Unknown'
             if points:
                 origin_city, dest_city = self._get_start_and_destination_city(str(points[0]['latitude']),
-                                                                             str(points[0]['longitude']),
-                                                                             str(points[-1]['latitude']),
-                                                                             str(points[-1]['longitude']))
+                                                                              str(points[0]['longitude']),
+                                                                              str(points[-1]['latitude']),
+                                                                              str(points[-1]['longitude']))
             tracks.append({
                 'origin_city': origin_city,
                 'dest_city': dest_city,
@@ -132,7 +133,6 @@ class Processor:
             dfs.append(df)
         self.transformed_data = pd.concat(dfs, ignore_index=True)
         self._remove_anomalies()
-        exit(1)
         return self.transformed_data
 
     def load(self,
@@ -220,7 +220,17 @@ class Processor:
         except psycopg2.Error as e:
             print(e)
     
-    def _remove_anomalies(self, threshold: int=3):
+    def _remove_anomalies(self, threshold: int=3) -> None:
+        """
+        Calculates Zscore for latitude and longitude and 
+        then remove anomalies.
+
+        Args:
+            threshold: Used to determine anomalies.
+
+        Returns:
+            None
+        """
         lat_zscore = np.abs(stats.zscore(self.transformed_data['latitude']))
         lon_zscore = np.abs(stats.zscore(self.transformed_data['longitude']))
         
@@ -232,14 +242,26 @@ class Processor:
                                    inplace=True)
     
     def _get_start_and_destination_city(self,
-                                        start_latitude: str,
-                                        start_longitude: str,
+                                        origin_latitude: str,
+                                        origin_longitude: str,
                                         dest_latitude: str,
-                                        dest_longitude: str):
-        
+                                        dest_longitude: str) -> Tuple[str, str]:
+        """
+        Returns closest location based on origin and
+        destination coordinates.
+
+        Args:
+            origin_latitude: Psycopg2 connection.
+            origin_longitude: Path to file containing query.
+            dest_latitude: Path to file containing query.
+            dest_longitude: Path to file containing query.
+
+        Returns:
+            Origin location and destination location
+        """
         origin_city = 'Unknown' 
         dest_city = 'Unknown'
-        origin_location = self.geolocator.reverse(start_latitude + "," + start_longitude,
+        origin_location = self.geolocator.reverse(origin_latitude + "," + origin_longitude,
                                                  language='en').raw['address']
         dest_location = self.geolocator.reverse(dest_latitude + "," + dest_longitude,
                                                 language='en').raw['address']
@@ -251,8 +273,6 @@ class Processor:
             origin_city = origin_location['city']
         elif 'suburb' in origin_location:
             origin_city = origin_location['suburb']
-        else:
-            print(origin_location)
         
         if 'town' in dest_location:
             dest_city = dest_location['town']
@@ -262,8 +282,6 @@ class Processor:
             dest_city = dest_location['city']
         elif 'suburb' in dest_location:
             dest_city = dest_location['suburb']
-        else:
-            print(dest_location)
         
         return origin_city, dest_city
     
