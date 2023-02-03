@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
+import uuid
 import psycopg2
 import os
 import gpxpy 
@@ -9,6 +10,7 @@ from psycopg2.extensions import connection
 from typing import List, Dict
 from scipy import stats
 from global_land_mask import globe
+from geopy.geocoders import Nominatim
 
 
 class Processor:
@@ -27,6 +29,7 @@ class Processor:
         self.data = []
         self.transformed_data = pd.DataFrame()
         self.create_table_query = os.getenv("CREATE_TABLE", None)
+        self.geolocator = Nominatim(user_agent="geoapiExercises")
         self._config = {
             'dbname': os.getenv('REDSHIFT_DB_NAME'),
             'host': os.getenv('REDSHIFT_HOST'),
@@ -79,13 +82,14 @@ class Processor:
         Returns:
             Pandas DataFrame with transformed data. 
         """
-        points = []
+        tracks = []
         if data is not None:
             self.data = data
         elif not self.data: 
             raise ValueError('Data was not provided.')
 
         for track in self.data:
+            points = []
             for segment in track.segments:
                 for p in segment.points:
                     speed = None 
@@ -93,9 +97,9 @@ class Processor:
                     for c in p.extensions[0]:
                         if 'speed' in c.tag:
                             speed = float(c.text)
-                        elif 'course' in c.tag:
+                        if 'course' in c.tag:
                             course = float(c.text)
-                    if globe.is_ocean(p.latitude, p.longitude):
+                    if not globe.is_land(p.latitude, p.longitude):
                         points.append({
                             'time': p.time,
                             'latitude': p.latitude,
@@ -103,10 +107,32 @@ class Processor:
                             'speed': speed,
                             'course': course
                         })
+            
+            origin_city, dest_city = 'Unknown', 'Unknown'
+            if points:
+                origin_city, dest_city = self._get_start_and_destination_city(str(points[0]['latitude']),
+                                                                             str(points[0]['longitude']),
+                                                                             str(points[-1]['latitude']),
+                                                                             str(points[-1]['longitude']))
+            tracks.append({
+                'origin_city': origin_city,
+                'dest_city': dest_city,
+                'points': points
+            })
         
-        self.transformed_data = pd.DataFrame(points)
+        dfs = []
+        for row in tracks:
+            origin_city = row['origin_city']
+            dest_city = row['dest_city']
+            points = row['points']
+            df = pd.DataFrame(points)
+            df['origin_city'] = origin_city
+            df['dest_city'] = dest_city
+            df['track_id'] = uuid.uuid4().hex
+            dfs.append(df)
+        self.transformed_data = pd.concat(dfs, ignore_index=True)
         self._remove_anomalies()
-
+        exit(1)
         return self.transformed_data
 
     def load(self,
@@ -146,7 +172,8 @@ class Processor:
                 self.transformed_data.to_sql(os.getenv('REDSHIFT_TABLE'),
                                              conn,
                                              if_exists='append',
-                                             index=False)
+                                             index=False,
+                                             method='multi')
                 print("DATA SAVED ON REDSHIFT CLUSTER.")
         except psycopg2.Error as e:
             print(e)
@@ -200,8 +227,45 @@ class Processor:
         outliers_lat = np.where(lat_zscore > threshold)[0]
         outliers_lon = np.where(lon_zscore > threshold)[0]
         outliers = np.concatenate((outliers_lat, outliers_lon))
-        self.transformed_data.drop(outliers,
+        self.transformed_data.drop(index=outliers,
+                                   axis=0,
                                    inplace=True)
+    
+    def _get_start_and_destination_city(self,
+                                        start_latitude: str,
+                                        start_longitude: str,
+                                        dest_latitude: str,
+                                        dest_longitude: str):
+        
+        origin_city = 'Unknown' 
+        dest_city = 'Unknown'
+        origin_location = self.geolocator.reverse(start_latitude + "," + start_longitude,
+                                                 language='en').raw['address']
+        dest_location = self.geolocator.reverse(dest_latitude + "," + dest_longitude,
+                                                language='en').raw['address']
+        if 'town' in origin_location:
+            origin_city = origin_location['town']
+        elif 'village' in origin_location:
+            origin_city = origin_location['village']
+        elif 'city' in origin_location:
+            origin_city = origin_location['city']
+        elif 'suburb' in origin_location:
+            origin_city = origin_location['suburb']
+        else:
+            print(origin_location)
+        
+        if 'town' in dest_location:
+            dest_city = dest_location['town']
+        elif 'village' in dest_location:
+            dest_city = dest_location['village']
+        elif 'city' in dest_location:
+            dest_city = dest_location['city']
+        elif 'suburb' in dest_location:
+            dest_city = dest_location['suburb']
+        else:
+            print(dest_location)
+        
+        return origin_city, dest_city
     
     def _prepare_conn_string(self, config: Dict[str, int]) -> str:
         """
@@ -215,8 +279,3 @@ class Processor:
         """
         return f'postgresql://{config["user"]}:{config["password"]}' + \
                f'@{config["host"]}:{config["port"]}/{config["dbname"]}'
-
-
-if __name__ == '__main__':
-    p = Processor()
-    p.run_pipeline(data_path='/home/pito/gpx-tracks-etl/data/dummy.gpx')
