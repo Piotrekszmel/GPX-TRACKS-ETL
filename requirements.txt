@@ -1,7 +1,9 @@
-pandas
-gpxpy
-psycopg2
-sqlalchemy
-python-dotenv
-scipy
-numpy
+pandas==1.5.3
+gpxpy==1.5.0
+psycopg2-binary==2.9.5
+sqlalchemy==2.3.2.post1
+python-dotenv==0.21.0
+scipy==1.10.0
+numpy==1.24.1
+global_land_mask==1.0.0
+geopy==2.3.0
