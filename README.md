@@ -76,16 +76,15 @@ Data coming from gpx files is transformed into pandas Dataframes and then loaded
 
 Table used to store data looks as follows:
 
-id INT PRIMARY KEY IDENTITY(1, 1),  
-time DATETIME NOT NULL,  
-latitude FLOAT NOT NULL,  
-longitude FLOAT NOT NULL,  
-speed FLOAT,
-course FLOAT,
-
-origin_city VARCHAR(255) NOT NULL,
-dest_city VARCHAR(255) NOT NULL,
-track_id VARCHAR(255) NOT NULL
+- id INT PRIMARY KEY IDENTITY(1, 1),
+- time DATETIME NOT NULL,
+- latitude FLOAT NOT NULL,
+- longitude FLOAT NOT NULL,
+- speed FLOAT,
+- course FLOAT,
+- origin_city VARCHAR(255) NOT NULL,
+- dest_city VARCHAR(255) NOT NULL,
+- track_id VARCHAR(255) NOT NULL
 
 To the information stored in gpx files I added origin_city, dest_city and track_id. At the beginning I wanted to store each track as a one row in a database, but I thought that it might not be the most efficient way, so I decided to create a unique track_id and assign it to every point with respect to the track that this point is a part of. Thanks to that I got flatten structure of data and also there is an option to use track_id to group points into respecting tracks.
 
