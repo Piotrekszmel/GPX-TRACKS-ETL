@@ -75,6 +75,7 @@ Supported PARAMS:
 - Data model
 
   Table used to store data looks as follows:
+
   id INT PRIMARY KEY IDENTITY(1, 1),  
   time DATETIME NOT NULL,  
   latitude FLOAT NOT NULL,  
