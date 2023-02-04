@@ -35,7 +35,7 @@ it is not supported by Dockerfile)
 ## As pip package
 
 1. Install
-   pip3 install etlgpx
+   - pip3 install etlgpx
 2. Run code
    - etlgpx PARAMS
 
