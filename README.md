@@ -20,24 +20,24 @@ it is not supported by Dockerfile)
 
 # Running the code
 
-- From within project directory
+## From within project directory
 
-  1. Install
-     pip3 install -e . -r requirements.txt
-  2. Run code
+1. Install
+   pip3 install -e . -r requirements.txt
+2. Run code
 
-     - python3 etlgpx/main.py
+   - python3 etlgpx/main.py
 
-     or
+   or
 
-     - python3 etlhpx/cli.py PARAMS
+   - python3 etlhpx/cli.py PARAMS
 
-- As pip package
+## As pip package
 
-  1. Install
-     pip3 install etlgpx
-  2. Run code
-     - etlgpx PARAMS
+1. Install
+   pip3 install etlgpx
+2. Run code
+   - etlgpx PARAMS
 
 Supported PARAMS:
 
@@ -57,50 +57,53 @@ Supported PARAMS:
 
 # Architecture
 
-- Processor
+## Processor
 
-  I decided to create a Processor class that is responsible for the ETL process. It consists of separated methods for
-  extracting, transforming and loading data. Additionally there is a run_pipeline() method that makes use of
-  all these three methods and runs the whole ETL process.
+I decided to create a Processor class that is responsible for the ETL process. It consists of separated methods for
+extracting, transforming and loading data. Additionally there is a run_pipeline() method that makes use of
+all these three methods and runs the whole ETL process.
 
-  Processor also implements a method responsible for cleaning data by removing anomalies calculated based on
-  given latitude and longitude.
+Processor also implements a method responsible for cleaning data by removing anomalies calculated based on
+given latitude and longitude.
 
-  There is also a method that returns the closest city based on given coordinates.
+There is also a method that returns the closest city based on given coordinates.
 
-  Each point is checked for whether it is on the land. If so, it is removed from the data set.
+Each point is checked for whether it is on the land. If so, it is removed from the data set.
 
-  Data coming from gpx files is transformed into pandas Dataframes and then loaded into Redshift.
+Data coming from gpx files is transformed into pandas Dataframes and then loaded into Redshift.
 
-- Data model
+## Data model
 
-  Table used to store data looks as follows:
+Table used to store data looks as follows:
 
-  id INT PRIMARY KEY IDENTITY(1, 1),  
-  time DATETIME NOT NULL,  
-  latitude FLOAT NOT NULL,  
-  longitude FLOAT NOT NULL,  
-  speed FLOAT,  
-  course FLOAT,
-  origin_city VARCHAR(255) NOT NULL,
-  dest_city VARCHAR(255) NOT NULL,
-  track_id VARCHAR(255) NOT NULL
+id INT PRIMARY KEY IDENTITY(1, 1),  
+time DATETIME NOT NULL,  
+latitude FLOAT NOT NULL,  
+longitude FLOAT NOT NULL,  
+speed FLOAT,
+course FLOAT,
 
-  To the information stored in gpx files I added origin_city, dest_city and track_id. At the beginning I wanted to store each track as a one row in a database, but I thought that it might not be the most efficient way, so I decided to create a unique track_id and assign it to every point with respect to the track that this point is a part of. Thanks to that I got flatten structure of data and also there is an option to use track_id to group points into respecting tracks.
+origin_city VARCHAR(255) NOT NULL,
+dest_city VARCHAR(255) NOT NULL,
+track_id VARCHAR(255) NOT NULL
 
-  track_id is created uniquely with uuid.uuid4().hex
+To the information stored in gpx files I added origin_city, dest_city and track_id. At the beginning I wanted to store each track as a one row in a database, but I thought that it might not be the most efficient way, so I decided to create a unique track_id and assign it to every point with respect to the track that this point is a part of. Thanks to that I got flatten structure of data and also there is an option to use track_id to group points into respecting tracks.
 
-- Scripts
-  I created a scripts directory to store sql scripts.
+track_id is created uniquely with uuid.uuid4().hex
 
-  insights1.sql is a query that answers the following question:
-  What percentage of tracks exceeded 10 knots (nautical miles per hour)?
+## Scripts
 
-  insights2.sql is a query that answers the following question:
-  Breakdown tracks to and from Cowes to find the origin/destination (nearest town)
-  and what percentage started/ended in each
+I created a scripts directory to store sql scripts.
 
-- Pipeline steps:
-  1. Data is extracted from gpx files stored in a given directory
-  2. Extracted is cleansed and transformed into the previously mentioned data format.
-  3. Transformed data is loaded into Redshift based on given configuration.
+insights1.sql is a query that answers the following question:
+What percentage of tracks exceeded 10 knots (nautical miles per hour)?
+
+insights2.sql is a query that answers the following question:
+Breakdown tracks to and from Cowes to find the origin/destination (nearest town)
+and what percentage started/ended in each
+
+## Pipeline steps:
+
+1. Data is extracted from gpx files stored in a given directory
+2. Extracted is cleansed and transformed into the previously mentioned data format.
+3. Transformed data is loaded into Redshift based on given configuration.
