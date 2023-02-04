@@ -1,6 +1,6 @@
 # GPX-TRACKS-ETL
 
-# Getting ready
+# Setup
 
 Before running the code there is a need to create a .env file
 in a etlgpx directory containing following variables:
@@ -18,6 +18,8 @@ it is not supported by Dockerfile)
 - CREATE_TABLE: path to sql file containing code that create a table
 - DATA_PATH: path to the data that will be used to run pipeline
 
+# Running the code
+
 - From within project directory
 
   1. Install
@@ -25,7 +27,9 @@ it is not supported by Dockerfile)
   2. Run code
 
      - python3 etlgpx/main.py
-       or
+
+     or
+
      - python3 etlhpx/cli.py PARAMS
 
 - As pip package
@@ -69,6 +73,7 @@ Supported PARAMS:
   Data coming from gpx files is transformed into pandas Dataframes and then loaded into Redshift.
 
 - Data model
+
   Table used to store data looks as follows:
   id INT PRIMARY KEY IDENTITY(1, 1),  
   time DATETIME NOT NULL,  
